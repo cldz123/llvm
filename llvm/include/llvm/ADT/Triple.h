@@ -65,6 +65,8 @@ public:
     mipsel,         // MIPSEL: mipsel, mipsallegrexe, mipsr6el
     mips64,         // MIPS64: mips64, mips64r6, mipsn32, mipsn32r6
     mips64el,       // MIPS64EL: mips64el, mips64r6el, mipsn32el, mipsn32r6el
+    cgpu32,         // CGPUEL: cgpu32
+    cgpu64,         // CGPU64EL: cgpu64
     msp430,         // MSP430: msp430
     ppc,            // PPC: powerpc
     ppcle,          // PPCLE: powerpc (little endian)
@@ -148,6 +150,7 @@ public:
     KalimbaSubArch_v5,
 
     MipsSubArch_r6,
+    CGPUSubArch_r6,
 
     PPCSubArch_spe,
 
@@ -169,6 +172,7 @@ public:
     IBM,
     ImaginationTechnologies,
     MipsTechnologies,
+    CGPUTechnologies,
     NVIDIA,
     CSR,
     Myriad,
@@ -841,6 +845,21 @@ public:
   /// Tests whether the target is MIPS (little and big endian, 32- or 64-bit).
   bool isMIPS() const {
     return isMIPS32() || isMIPS64();
+  }
+
+  /// Tests whether the target is CGPU 32-bit (little and big endian).
+  bool isCGPU32() const {
+    return getArch() == Triple::cgpu32;
+  }
+
+  /// Tests whether the target is CGPU 64-bit (little and big endian).
+  bool isCGPU64() const {
+    return getArch() == Triple::cgpu64;
+  }
+
+  /// Tests whether the target is CGPU (little and big endian, 32- or 64-bit).
+  bool isCGPU() const {
+    return isCGPU32() || isCGPU64();
   }
 
   /// Tests whether the target is PowerPC (32- or 64-bit LE or BE).

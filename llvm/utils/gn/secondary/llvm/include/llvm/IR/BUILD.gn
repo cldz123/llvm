@@ -87,6 +87,16 @@ tablegen("IntrinsicsMips") {
   td_file = "Intrinsics.td"
 }
 
+tablegen("IntrinsicsCGPU") {
+  visibility = [ ":public_tablegen" ]
+  output_name = "IntrinsicsCGPU.h"
+  args = [
+    "-gen-intrinsic-enums",
+    "-intrinsic-prefix=cgpu0",
+  ]
+  td_file = "Intrinsics.td"
+}
+
 tablegen("IntrinsicsNVPTX") {
   visibility = [ ":public_tablegen" ]
   output_name = "IntrinsicsNVPTX.h"

@@ -128,6 +128,8 @@
 #include "llvm/Transforms/Vectorize/SLPVectorizer.h"
 #include "llvm/Transforms/Vectorize/VectorCombine.h"
 
+#include "llvm/Guard/Injection/PassRegister.h"
+
 using namespace llvm;
 
 static cl::opt<InliningAdvisorMode> UseInlineAdvisor(
@@ -1307,6 +1309,7 @@ PassBuilder::buildPerModuleDefaultPipeline(OptimizationLevel Level,
          "Must request optimizations for the default pipeline!");
 
   ModulePassManager MPM;
+  PASS_BUILDER_INJECTION(mpvmp::PassBuilderBuildPerModuleDefaultPipeline_1, MPM, Level);
 
   // Convert @llvm.global.annotations to !annotation metadata.
   MPM.addPass(Annotation2MetadataPass());
@@ -1339,6 +1342,7 @@ PassBuilder::buildPerModuleDefaultPipeline(OptimizationLevel Level,
 
   if (LTOPreLink)
     addRequiredLTOPreLinkPasses(MPM);
+  PASS_BUILDER_INJECTION(mpvmp::PassBuilderBuildPerModuleDefaultPipeline, MPM, Level);
 
   return MPM;
 }
@@ -1349,6 +1353,7 @@ PassBuilder::buildThinLTOPreLinkDefaultPipeline(OptimizationLevel Level) {
          "Must request optimizations for the default pipeline!");
 
   ModulePassManager MPM;
+  PASS_BUILDER_INJECTION(mpvmp::PassBuilderBuildThinLTOPreLinkDefaultPipeline_1, MPM, Level)
 
   // Convert @llvm.global.annotations to !annotation metadata.
   MPM.addPass(Annotation2MetadataPass());
@@ -1396,6 +1401,7 @@ PassBuilder::buildThinLTOPreLinkDefaultPipeline(OptimizationLevel Level) {
   addAnnotationRemarksPass(MPM);
 
   addRequiredLTOPreLinkPasses(MPM);
+  PASS_BUILDER_INJECTION(mpvmp::PassBuilderBuildThinLTOPreLinkDefaultPipeline, MPM, Level)
 
   return MPM;
 }
@@ -1403,6 +1409,7 @@ PassBuilder::buildThinLTOPreLinkDefaultPipeline(OptimizationLevel Level) {
 ModulePassManager PassBuilder::buildThinLTODefaultPipeline(
     OptimizationLevel Level, const ModuleSummaryIndex *ImportSummary) {
   ModulePassManager MPM;
+  PASS_BUILDER_INJECTION(mpvmp::PassBuilderBuildThinLTODefaultPipeline_1, MPM, Level);
 
   // Convert @llvm.global.annotations to !annotation metadata.
   MPM.addPass(Annotation2MetadataPass());
@@ -1452,6 +1459,7 @@ ModulePassManager PassBuilder::buildThinLTODefaultPipeline(
 
   // Emit annotation remarks.
   addAnnotationRemarksPass(MPM);
+  PASS_BUILDER_INJECTION(mpvmp::PassBuilderBuildThinLTODefaultPipeline, MPM, Level);
 
   return MPM;
 }
@@ -1469,6 +1477,7 @@ ModulePassManager
 PassBuilder::buildLTODefaultPipeline(OptimizationLevel Level,
                                      ModuleSummaryIndex *ExportSummary) {
   ModulePassManager MPM;
+  PASS_BUILDER_INJECTION(mpvmp::PassBuilderBuildLTODefaultPipeline_1, MPM, Level);
 
   // Convert @llvm.global.annotations to !annotation metadata.
   MPM.addPass(Annotation2MetadataPass());
@@ -1758,6 +1767,7 @@ PassBuilder::buildLTODefaultPipeline(OptimizationLevel Level,
 
   // Emit annotation remarks.
   addAnnotationRemarksPass(MPM);
+  PASS_BUILDER_INJECTION(mpvmp::PassBuilderBuildLTODefaultPipeline, MPM, Level);
 
   return MPM;
 }
@@ -1768,6 +1778,7 @@ ModulePassManager PassBuilder::buildO0DefaultPipeline(OptimizationLevel Level,
          "buildO0DefaultPipeline should only be used with O0");
 
   ModulePassManager MPM;
+  PASS_BUILDER_INJECTION(mpvmp::PassBuilderBuildO0DefaultPipeline_1, MPM, Level);
 
   // Perform pseudo probe instrumentation in O0 mode. This is for the
   // consistency between different build modes. For example, a LTO build can be
@@ -1866,6 +1877,7 @@ ModulePassManager PassBuilder::buildO0DefaultPipeline(OptimizationLevel Level,
     addRequiredLTOPreLinkPasses(MPM);
 
   MPM.addPass(createModuleToFunctionPassAdaptor(AnnotationRemarksPass()));
+  PASS_BUILDER_INJECTION(mpvmp::PassBuilderBuildO0DefaultPipeline, MPM, Level);
 
   return MPM;
 }

@@ -57,6 +57,8 @@
 #include "llvm/Transforms/Utils/FunctionImportUtils.h"
 #include "llvm/Transforms/Utils/SplitModule.h"
 
+#include "llvm/Guard/Guard/Hybrid/HybridLTO.h"
+
 #include <set>
 
 using namespace llvm;
@@ -653,6 +655,8 @@ Error LTO::addModule(InputFile &Input, unsigned ModI,
   addModuleToGlobalRes(ModSyms, {ResI, ResE},
                        LTOInfo->IsThinLTO ? ThinLTO.ModuleMap.size() + 1 : 0,
                        LTOInfo->HasSummary);
+  static auto HybridAnalysis = std::make_unique<HybridInitializersAnalysis>();
+  HybridAnalysis->analyze(Input);
 
   if (LTOInfo->IsThinLTO)
     return addThinLTO(BM, ModSyms, ResI, ResE);

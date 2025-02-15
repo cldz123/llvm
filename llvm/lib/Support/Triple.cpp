@@ -52,6 +52,8 @@ StringRef Triple::getArchTypeName(ArchType Kind) {
   case mips64el:       return "mips64el";
   case mips:           return "mips";
   case mipsel:         return "mipsel";
+  case cgpu64:         return "cgpu64";
+  case cgpu32:         return "cgpu32";
   case msp430:         return "msp430";
   case nvptx64:        return "nvptx64";
   case nvptx:          return "nvptx";
@@ -117,6 +119,9 @@ StringRef Triple::getArchTypePrefix(ArchType Kind) {
   case mipsel:
   case mips64:
   case mips64el:    return "mips";
+
+  case cgpu32:
+  case cgpu64:    return "cgpu";
 
   case hexagon:     return "hexagon";
 
@@ -187,6 +192,7 @@ StringRef Triple::getVendorTypeName(VendorType Kind) {
   case ImaginationTechnologies: return "img";
   case Mesa: return "mesa";
   case MipsTechnologies: return "mti";
+  case CGPUTechnologies: return "cgpu";
   case Myriad: return "myriad";
   case NVIDIA: return "nvidia";
   case OpenEmbedded: return "oe";
@@ -322,6 +328,8 @@ Triple::ArchType Triple::getArchTypeForLLVMName(StringRef Name) {
     .Case("mipsel", mipsel)
     .Case("mips64", mips64)
     .Case("mips64el", mips64el)
+    .Case("cgpu32", cgpu32)
+    .Case("cgpu64", cgpu64)
     .Case("msp430", msp430)
     .Case("ppc64", ppc64)
     .Case("ppc32", ppc)
@@ -473,6 +481,10 @@ static Triple::ArchType parseArch(StringRef ArchName) {
            "mips64r6", "mipsn32r6", Triple::mips64)
     .Cases("mips64el", "mipsn32el", "mipsisa64r6el", "mips64r6el",
            "mipsn32r6el", Triple::mips64el)
+    .Cases("cgpu32", "cgpur6el",
+           Triple::cgpu32)
+    .Cases("cgpu64", "cgpu64r6el",
+           Triple::cgpu64)
     .Case("r600", Triple::r600)
     .Case("amdgcn", Triple::amdgcn)
     .Case("riscv32", Triple::riscv32)
@@ -536,6 +548,7 @@ static Triple::VendorType parseVendor(StringRef VendorName) {
     .Case("ibm", Triple::IBM)
     .Case("img", Triple::ImaginationTechnologies)
     .Case("mti", Triple::MipsTechnologies)
+    .Case("cgpu", Triple::CGPUTechnologies)
     .Case("nvidia", Triple::NVIDIA)
     .Case("csr", Triple::CSR)
     .Case("myriad", Triple::Myriad)
@@ -649,6 +662,10 @@ static Triple::SubArchType parseSubArch(StringRef SubArchName) {
   if (SubArchName.startswith("mips") &&
       (SubArchName.endswith("r6el") || SubArchName.endswith("r6")))
     return Triple::MipsSubArch_r6;
+
+  if (SubArchName.startswith("cgpu") &&
+      (SubArchName.endswith("r6el") || SubArchName.endswith("r6")))
+    return Triple::CGPUSubArch_r6;
 
   if (SubArchName == "powerpcspe")
     return Triple::PPCSubArch_spe;
@@ -848,6 +865,8 @@ static Triple::ObjectFormatType getDefaultFormat(const Triple &T) {
       return Triple::GOFF;
     return Triple::ELF;
 
+  case Triple::cgpu64:
+  case Triple::cgpu32:
   case Triple::wasm32:
   case Triple::wasm64:
     return Triple::Wasm;
@@ -1146,6 +1165,14 @@ StringRef Triple::getArchName(ArchType Kind, SubArchType SubArch) const {
     if (SubArch == MipsSubArch_r6)
       return "mipsisa64r6el";
     break;
+  case Triple::cgpu32:
+    if (SubArch == CGPUSubArch_r6)
+      return "cgpuisa32r6el";
+    break;
+  case Triple::cgpu64:
+    if (SubArch == CGPUSubArch_r6)
+      return "cgpuisa64r6el";
+    break;
   default:
     break;
   }
@@ -1393,6 +1420,7 @@ static unsigned getArchPointerBitWidth(llvm::Triple::ArchType Arch) {
   case llvm::Triple::m68k:
   case llvm::Triple::mips:
   case llvm::Triple::mipsel:
+  case llvm::Triple::cgpu32:
   case llvm::Triple::nvptx:
   case llvm::Triple::ppc:
   case llvm::Triple::ppcle:
@@ -1424,6 +1452,7 @@ static unsigned getArchPointerBitWidth(llvm::Triple::ArchType Arch) {
   case llvm::Triple::loongarch64:
   case llvm::Triple::mips64:
   case llvm::Triple::mips64el:
+  case llvm::Triple::cgpu64:
   case llvm::Triple::nvptx64:
   case llvm::Triple::ppc64:
   case llvm::Triple::ppc64le:
@@ -1483,6 +1512,7 @@ Triple Triple::get32BitArchVariant() const {
   case Triple::m68k:
   case Triple::mips:
   case Triple::mipsel:
+  case Triple::cgpu32:
   case Triple::nvptx:
   case Triple::ppc:
   case Triple::ppcle:
@@ -1515,6 +1545,9 @@ Triple Triple::get32BitArchVariant() const {
     break;
   case Triple::mips64el:
     T.setArch(Triple::mipsel, getSubArch());
+    break;
+  case Triple::cgpu64:
+    T.setArch(Triple::cgpu32, getSubArch());
     break;
   case Triple::nvptx64:        T.setArch(Triple::nvptx);   break;
   case Triple::ppc64:          T.setArch(Triple::ppc);     break;
@@ -1565,6 +1598,7 @@ Triple Triple::get64BitArchVariant() const {
   case Triple::loongarch64:
   case Triple::mips64:
   case Triple::mips64el:
+  case Triple::cgpu64:
   case Triple::nvptx64:
   case Triple::ppc64:
   case Triple::ppc64le:
@@ -1592,6 +1626,9 @@ Triple Triple::get64BitArchVariant() const {
     break;
   case Triple::mipsel:
     T.setArch(Triple::mips64el, getSubArch());
+    break;
+  case Triple::cgpu32:
+    T.setArch(Triple::cgpu64, getSubArch());
     break;
   case Triple::nvptx:           T.setArch(Triple::nvptx64);    break;
   case Triple::ppc:             T.setArch(Triple::ppc64);      break;
@@ -1631,6 +1668,8 @@ Triple Triple::getBigEndianArchVariant() const {
   case Triple::le64:
   case Triple::loongarch32:
   case Triple::loongarch64:
+  case Triple::cgpu32:
+  case Triple::cgpu64:
   case Triple::msp430:
   case Triple::nvptx64:
   case Triple::nvptx:
@@ -1736,6 +1775,8 @@ bool Triple::isLittleEndian() const {
   case Triple::loongarch64:
   case Triple::mips64el:
   case Triple::mipsel:
+  case Triple::cgpu64:
+  case Triple::cgpu32:
   case Triple::msp430:
   case Triple::nvptx64:
   case Triple::nvptx:

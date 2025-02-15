@@ -846,6 +846,9 @@ void ScalarEnumerationTraits<ELFYAML::ELF_REL>::enumeration(
   case ELF::EM_MIPS:
 #include "llvm/BinaryFormat/ELFRelocs/Mips.def"
     break;
+  case ELF::EM_CGPU:
+#include "llvm/Guard/CGPURelocs.def"
+    break;
   case ELF::EM_HEXAGON:
 #include "llvm/BinaryFormat/ELFRelocs/Hexagon.def"
     break;

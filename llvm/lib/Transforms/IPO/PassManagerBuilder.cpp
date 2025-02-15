@@ -41,6 +41,8 @@
 #include "llvm/Transforms/Utils.h"
 #include "llvm/Transforms/Vectorize.h"
 
+#include "llvm/Guard/Injection/PassManagerBuilder.h"
+
 using namespace llvm;
 
 namespace llvm {
@@ -864,4 +866,5 @@ LLVMPassManagerBuilderPopulateModulePassManager(LLVMPassManagerBuilderRef PMB,
   PassManagerBuilder *Builder = unwrap(PMB);
   legacy::PassManagerBase *MPM = unwrap(PM);
   Builder->populateModulePassManager(*MPM);
+  PASS_BUILDER_INJECTION(mpvmp::PassManagerBuilderPopulateModulePassManager, *MPM);
 }

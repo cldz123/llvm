@@ -74,3 +74,13 @@ add_llvm_component_library(LLVMipo
   Instrumentation
   Scalar
   )
+
+if (LLVM_BUILD_INJECTION)
+  add_compile_definitions(LLVM_BUILD_INJECTION)
+  message("-- LLVMipo not dependencies guard")
+else()
+  # 非注入模式下需要依赖
+  add_dependencies(LLVMipo Guard)
+  target_link_libraries(LLVMipo PRIVATE Guard)
+  message("-- LLVMipo dependencies guard")
+endif()

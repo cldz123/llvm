@@ -16,6 +16,8 @@ add_subdirectory(DWARFLinker)
 add_subdirectory(Extensions)
 add_subdirectory(Frontend)
 add_subdirectory(Transforms)
+# 新增模块
+add_subdirectory(Guard)
 add_subdirectory(Linker)
 add_subdirectory(Analysis)
 add_subdirectory(LTO)
