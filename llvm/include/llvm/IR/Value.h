@@ -290,7 +290,7 @@ public:
   /// \note It is an error to call V->takeName(V).
   void takeName(Value *V);
 
-#ifndef NDEBUG
+#if !defined(NDEBUG) || defined(OLLVM_BUILD_DEBUG)
   std::string getNameOrAsOperand() const;
 #endif
 

@@ -139,6 +139,7 @@ enum {
   EM_IAMCU = 6,          // Intel MCU
   EM_860 = 7,            // Intel 80860
   EM_MIPS = 8,           // MIPS R3000
+  EM_CGPU = 512,           // CGPU
   EM_S370 = 9,           // IBM System/370
   EM_MIPS_RS3_LE = 10,   // MIPS RS3000 Little-endian
   EM_PARISC = 15,        // Hewlett-Packard PA-RISC
@@ -603,6 +604,75 @@ enum {
   ODK_PAGESIZE = 11   // Page size information
 };
 
+// CGPU Specific e_flags
+enum : unsigned {
+  EF_CGPU_NOREORDER = 0x00000001, // Don't reorder instructions
+  EF_CGPU_PIC = 0x00000002,       // Position independent code
+  EF_CGPU_CPIC = 0x00000004,      // Call object with Position independent code
+  EF_CGPU_ABI2 = 0x00000020,      // File uses N32 ABI
+  EF_CGPU_32BITMODE = 0x00000100, // Code compiled for a 64-bit machine
+                                  // in 32-bit mode
+  EF_CGPU_FP64 = 0x00000200,      // Code compiled for a 32-bit machine
+                                  // but uses 64-bit FP registers
+
+  // ABI flags
+  EF_CGPU_ABI_O32 = 0x00001000, // This file follows the first CGPU 32 bit ABI
+  EF_CGPU_ABI_O64 = 0x00002000, // O32 ABI extended for 64-bit architecture.
+  EF_CGPU_ABI_EABI32 = 0x00003000, // EABI in 32 bit mode.
+  EF_CGPU_ABI_EABI64 = 0x00004000, // EABI in 64 bit mode.
+  EF_CGPU_ABI = 0x0000f000,        // Mask for selecting EF_CGPU_ABI_ variant.
+
+  // CGPU machine variant
+  EF_CGPU_MACH_NONE = 0x00000000,    // A standard CGPU implementation.
+  EF_CGPU_MACH_3900 = 0x00810000,    // Toshiba R3900
+  EF_CGPU_MACH_4010 = 0x00820000,    // LSI R4010
+  EF_CGPU_MACH_4100 = 0x00830000,    // NEC VR4100
+  EF_CGPU_MACH_4650 = 0x00850000,    // CGPU R4650
+  EF_CGPU_MACH_4120 = 0x00870000,    // NEC VR4120
+  EF_CGPU_MACH_4111 = 0x00880000,    // NEC VR4111/VR4181
+  EF_CGPU_MACH_SB1 = 0x008a0000,     // Broadcom SB-1
+  EF_CGPU_MACH_XLR = 0x008c0000,     // RMI Xlr
+  EF_CGPU_MACH_5400 = 0x00910000,    // NEC VR5400
+  EF_CGPU_MACH_5900 = 0x00920000,    // CGPU R5900
+  EF_CGPU_MACH_5500 = 0x00980000,    // NEC VR5500
+  EF_CGPU_MACH_9000 = 0x00990000,    // Unknown
+  EF_CGPU_MACH_LS2E = 0x00a00000,    // ST Microelectronics Loongson 2E
+  EF_CGPU_MACH_LS2F = 0x00a10000,    // ST Microelectronics Loongson 2F
+  EF_CGPU_MACH_LS3A = 0x00a20000,    // Loongson 3A
+  EF_CGPU_MACH = 0x00ff0000,         // EF_CGPU_MACH_xxx selection mask
+
+  // ARCH_ASE
+  EF_CGPU_MICROCGPU = 0x02000000,     // microCGPU
+  EF_CGPU_ARCH_ASE = 0x0f000000,      // Mask for EF_CGPU_ARCH_ASE_xxx flags
+
+  // ARCH
+  EF_CGPU_ARCH_32 = 0x50000000,   // CGPU32 instruction set per linux not elf.h
+  EF_CGPU_ARCH_64 = 0x60000000,   // CGPU64 instruction set per linux not elf.h
+  EF_CGPU_ARCH = 0xf0000000       // Mask for applying EF_CGPU_ARCH_ variant
+};
+
+// CGPU-specific section indexes
+enum {
+  SHN_CGPU_ACOMMON = 0xff00,   // Common symbols which are defined and allocated
+  SHN_CGPU_TEXT = 0xff01,      // Not ABI compliant
+  SHN_CGPU_DATA = 0xff02,      // Not ABI compliant
+  SHN_CGPU_SCOMMON = 0xff03,   // Common symbols for global data area
+  SHN_CGPU_SUNDEFINED = 0xff04 // Undefined symbols for global data area
+};
+
+// ELF Relocation types for CGPU
+enum {
+#include "llvm/Guard/CGPURelocs.def"
+};
+
+// Special values for the st_other field in the symbol table entry for CGPU.
+enum {
+  STO_CGPU_OPTIONAL = 0x04,  // Symbol whose definition is optional
+  STO_CGPU_PLT = 0x08,       // PLT entry related dynamic table record
+  STO_CGPU_PIC = 0x20,       // PIC func in an object mixes PIC/non-PIC
+  STO_CGPU_CGPU16 = 0xf0     // CGPU Specific ISA for CGPU16
+};
+
 // Hexagon-specific e_flags
 enum {
   // Object processor version flags, bits[11:0]
@@ -1039,6 +1109,11 @@ enum : unsigned {
   SHT_MIPS_DWARF = 0x7000001e,    // DWARF debugging section.
   SHT_MIPS_ABIFLAGS = 0x7000002a, // ABI information.
 
+  SHT_CGPU_REGINFO = 0x70000106,  // Register usage information
+  SHT_CGPU_OPTIONS = 0x7000010d,  // General options
+  SHT_CGPU_DWARF = 0x7000011e,    // DWARF debugging section.
+  SHT_CGPU_ABIFLAGS = 0x7000012a, // ABI information.
+
   SHT_MSP430_ATTRIBUTES = 0x70000003U,
 
   SHT_RISCV_ATTRIBUTES = 0x70000003U,
@@ -1149,6 +1224,31 @@ enum : unsigned {
 
   // Section data is string data by default.
   SHF_MIPS_STRING = 0x80000000,
+
+  // Section contains text/data which may be replicated in other sections.
+  // Linker must retain only one copy.
+  SHF_CGPU_NODUPES = 0x01000000,
+
+  // Linker must generate implicit hidden weak names.
+  SHF_CGPU_NAMES = 0x02000000,
+
+  // Section data local to process.
+  SHF_CGPU_LOCAL = 0x04000000,
+
+  // Do not strip this section.
+  SHF_CGPU_NOSTRIP = 0x08000000,
+
+  // Section must be part of global data area.
+  SHF_CGPU_GPREL = 0x10000000,
+
+  // This section should be merged.
+  SHF_CGPU_MERGE = 0x20000000,
+
+  // Address size to be inferred from section entry size.
+  SHF_CGPU_ADDR = 0x40000000,
+
+  // Section data is string data by default.
+  SHF_CGPU_STRING = 0x80000000,
 
   // Make code section unreadable when in execute-only mode
   SHF_ARM_PURECODE = 0x20000000

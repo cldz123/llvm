@@ -1446,6 +1446,7 @@ class opt : public Option,
 
   void setDefault() override { setDefaultImpl<DataType>(); }
 
+  inline __attribute__((always_inline))
   void done() {
     addArgument();
     Parser.initialize();
@@ -1641,6 +1642,7 @@ class list : public Option, public list_storage<DataType, StorageClass> {
     list_storage<DataType, StorageClass>::clear();
   }
 
+  inline __attribute__((always_inline))
   void done() {
     addArgument();
     Parser.initialize();
@@ -1799,6 +1801,7 @@ class bits : public Option, public bits_storage<DataType, Storage> {
 
   void setDefault() override { bits_storage<DataType, Storage>::clear(); }
 
+  inline __attribute__((always_inline))
   void done() {
     addArgument();
     Parser.initialize();
@@ -1863,6 +1866,7 @@ class alias : public Option {
     return AliasFor->getValueExpectedFlag();
   }
 
+  inline __attribute__((always_inline))
   void done() {
     if (!hasArgStr())
       error("cl::alias must have argument name specified!");

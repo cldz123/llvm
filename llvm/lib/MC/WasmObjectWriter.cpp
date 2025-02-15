@@ -185,6 +185,20 @@ static void patchI32(raw_pwrite_stream &Stream, uint32_t Value,
   Stream.pwrite((char *)Buffer, sizeof(Buffer), Offset);
 }
 
+static void patchI24(raw_pwrite_stream &Stream, uint32_t Value,
+                     uint64_t Offset) {
+  uint8_t Buffer[4];
+  support::endian::write32le(Buffer, Value);
+  Stream.pwrite((char *)Buffer, sizeof(Buffer)-1, Offset);
+}
+
+static void patchI16(raw_pwrite_stream &Stream, uint32_t Value,
+                     uint64_t Offset) {
+  uint8_t Buffer[4];
+  support::endian::write32le(Buffer, Value);
+  Stream.pwrite((char *)Buffer, sizeof(Buffer)-2, Offset);
+}
+
 static void patchI64(raw_pwrite_stream &Stream, uint64_t Value,
                      uint64_t Offset) {
   uint8_t Buffer[8];
@@ -561,9 +575,10 @@ void WasmObjectWriter::recordRelocation(MCAssembler &Asm,
     // later gets changed again to a func symbol?] or it can be a real
     // function symbol, in which case it can be left as-is.
 
-    if (!FixupSection.getKind().isMetadata())
-      report_fatal_error("relocations for function or section offsets are "
-                         "only supported in metadata sections");
+// MARK: the code is commented to support jump table lowering
+//    if (!FixupSection.getKind().isMetadata())
+//      report_fatal_error("relocations for function or section offsets are "
+//                         "only supported in metadata sections");
 
     const MCSymbol *SectionSymbol = nullptr;
     const MCSection &SecA = SymA->getSection();
@@ -605,7 +620,7 @@ void WasmObjectWriter::recordRelocation(MCAssembler &Asm,
 
   // Relocation other than R_WASM_TYPE_INDEX_LEB are required to be
   // against a named symbol.
-  if (Type != wasm::R_WASM_TYPE_INDEX_LEB) {
+  if (Type != wasm::R_WASM_TYPE_INDEX_LEB && Type < wasm::R_CGPU_26) {
     if (SymA->getName().empty())
       report_fatal_error("relocations against un-named temporaries are not yet "
                          "supported by wasm");
@@ -706,6 +721,48 @@ WasmObjectWriter::getProvisionalValue(const WasmRelocationEntry &RelEntry,
     const WasmDataSegment &Segment = DataSegments[SymRef.Segment];
     // Ignore overflow. LLVM allows address arithmetic to silently wrap.
     return Segment.Offset + SymRef.Offset + RelEntry.Addend;
+  }
+  case wasm::R_CGPU_26:
+    return 0;
+  case wasm::R_CGPU_CALL:
+    LLVM_DEBUG(dbgs() << "======write call=" << RelEntry.Symbol->getName() << " section=" << RelEntry.FixupSection->getName()
+                      << " index=" << WasmIndices[RelEntry.Symbol]
+                      <<  "\n");
+    assert(WasmIndices.count(RelEntry.Symbol) > 0 && "symbol not found in wasm index space");
+    return WasmIndices[RelEntry.Symbol];
+  case wasm::R_CGPU_DATA: {
+    LLVM_DEBUG(dbgs() << "======write data symbol=" << RelEntry.Symbol->getName() << " section=" << RelEntry.FixupSection->getName() << " type=" << RelEntry.Type << " offset=" << RelEntry.Offset << " addend=" << RelEntry.Addend
+           << " count=" << DataLocations.count(RelEntry.Symbol) <<  "\n");
+    decltype(auto) SymbolWS = RelEntry.Symbol;
+    if (DataLocations.count(RelEntry.Symbol) == 0 && RelEntry.Symbol->isFunction()) {
+      std::string FuncVarName = (RelEntry.Symbol->getName() + "#func_var").str();
+      decltype(auto) FuncVarWS = dyn_cast_if_present<MCSymbolWasm>(Layout.getAssembler().getContext().lookupSymbol(FuncVarName));
+      if (FuncVarWS) {
+        SymbolWS = FuncVarWS;
+        LLVM_DEBUG(dbgs() << "======write data symbol=" << RelEntry.Symbol->getName() << " func var=" << FuncVarName <<  "\n");
+      }
+    }
+    assert(DataLocations.count(SymbolWS) > 0 && "symbol not found in data locations index space");
+    const wasm::WasmDataReference &SymRef = DataLocations[SymbolWS];
+    const WasmDataSegment &Segment = DataSegments[SymRef.Segment];
+    LLVM_DEBUG(dbgs() << "======write data symbol=" << SymbolWS->getName()
+           << " section=" << Segment.Section->getName() << " segment=" << Segment.Name << " flags=" << Segment.InitFlags
+           << " offset=" << Segment.Offset <<":" << SymRef.Offset << " size=" << SymRef.Size
+           << " alignment=" << Segment.Alignment << " linkage=" << Segment.LinkingFlags
+           << " data=" << Segment.Data <<  "\n");
+
+    auto Offset = Segment.Offset + SymRef.Offset;
+    if (Offset > 0xFFFF) {
+      report_fatal_error("too large data sections in one single object file");
+    }
+    return Offset;
+  }
+  case wasm::R_CGPU_CALL16:
+  case wasm::R_CGPU_HI16:
+  case wasm::R_CGPU_LO16:
+  case wasm::R_CGPU_HIGHER:
+  case wasm::R_CGPU_HIGHEST: {
+    return 0;
   }
   default:
     llvm_unreachable("invalid relocation type");
@@ -815,6 +872,21 @@ void WasmObjectWriter::applyRelocations(
     case wasm::R_WASM_MEMORY_ADDR_TLS_SLEB64:
       writePatchableS64(Stream, Value, Offset);
       break;
+    case wasm::R_CGPU_26:
+      break;
+    case wasm::R_CGPU_CALL:
+      patchI24(Stream, Value, Offset);
+      break;
+    case wasm::R_CGPU_DATA:
+      patchI16(Stream, Value, Offset);
+      break;
+    case wasm::R_CGPU_CALL16:
+    case wasm::R_CGPU_HI16:
+    case wasm::R_CGPU_LO16:
+    case wasm::R_CGPU_HIGHER:
+    case wasm::R_CGPU_HIGHEST: {
+      break;
+    }
     default:
       llvm_unreachable("invalid relocation type");
     }
@@ -937,16 +1009,16 @@ void WasmObjectWriter::writeGlobalSection(ArrayRef<wasm::WasmGlobal> Globals) {
       W->OS << char(Global.InitExpr.Inst.Opcode);
       switch (Global.Type.Type) {
       case wasm::WASM_TYPE_I32:
-        encodeSLEB128(0, W->OS);
+        encodeSLEB128(Global.InitExpr.Inst.Value.Int32, W->OS);
         break;
       case wasm::WASM_TYPE_I64:
-        encodeSLEB128(0, W->OS);
+        encodeSLEB128(Global.InitExpr.Inst.Value.Int64, W->OS);
         break;
       case wasm::WASM_TYPE_F32:
-        writeI32(0);
+        writeI32(Global.InitExpr.Inst.Value.Float32);
         break;
       case wasm::WASM_TYPE_F64:
-        writeI64(0);
+        writeI64(Global.InitExpr.Inst.Value.Float64);
         break;
       case wasm::WASM_TYPE_EXTERNREF:
         writeValueType(wasm::ValType::EXTERNREF);
@@ -1098,6 +1170,13 @@ uint32_t WasmObjectWriter::writeDataSection(const MCAsmLayout &Layout) {
     encodeULEB128(Segment.Data.size(), W->OS); // size
     Segment.Section->setSectionOffset(W->OS.tell() - Section.ContentsOffset);
     W->OS << Segment.Data; // data
+    LLVM_DEBUG(dbgs() << "===== section=" << Segment.Section->getName()
+                      << " segment " << Segment.Name
+                      << " flags " << Segment.InitFlags
+                      << " offset=" << Segment.Offset
+                      << " align=" << Segment.Alignment
+                      << " data=" << Segment.Data.size()
+                      << "\n");
   }
 
   // Apply fixups.
@@ -1418,6 +1497,23 @@ void WasmObjectWriter::prepareImports(
     }
   }
 
+  for (const MCSymbol &S : Asm.symbols()) {
+    const auto &WS = static_cast<const MCSymbolWasm &>(S);
+    if (WS.isGlobal() && WS.getName().endswith("$alias")) {
+      wasm::WasmImport Import;
+      Import.Field = WS.getImportName();
+      Import.Kind = wasm::WASM_EXTERNAL_GLOBAL;
+      Import.Module = WS.getImportModule();
+      Import.Global = WS.getGlobalType();
+      Imports.push_back(Import);
+      assert(WasmIndices.count(&WS) == 0);
+      //        WasmIndices[&WS] = NumGlobalImports++;
+      NumGlobalImports++;
+
+      LLVM_DEBUG(dbgs() << "======write global import=" << WS.getName() << " section=" << WS.getSection().getName() <<  "\n");
+    }
+  }
+
   // Add imports for GOT globals
   for (const MCSymbol &S : Asm.symbols()) {
     const auto &WS = static_cast<const MCSymbolWasm &>(S);
@@ -1577,6 +1673,9 @@ uint64_t WasmObjectWriter::writeOneObject(MCAssembler &Asm,
                  << " isDefined=" << S.isDefined() << " isExternal="
                  << S.isExternal() << " isTemporary=" << S.isTemporary()
                  << " isWeak=" << WS.isWeak() << " isHidden=" << WS.isHidden()
+                 << " isUsedInReloc=" << WS.isUsedInReloc() << " isUsedInInitArray()=" << WS.isUsedInInitArray()
+                 << " isSection=" << WS.isSection() << " omitFromLinkingSection()=" << WS.omitFromLinkingSection()
+                 << " isInSymtab(WS)=" << isInSymtab(WS)
                  << " isVariable=" << WS.isVariable() << "\n");
 
       if (WS.isVariable())
@@ -1643,9 +1742,10 @@ uint64_t WasmObjectWriter::writeOneObject(MCAssembler &Asm,
           report_fatal_error(".size expression must be evaluatable");
 
         auto &DataSection = static_cast<MCSectionWasm &>(WS.getSection());
-        if (!DataSection.isWasmData())
-          report_fatal_error("data symbols must live in a data section: " +
-                             WS.getName());
+// MARK: the code is commented to support jump table lowering
+//        if (!DataSection.isWasmData())
+//          report_fatal_error("data symbols must live in a data section: " +
+//                             WS.getName());
 
         // For each data symbol, export it in the symtab as a reference to the
         // corresponding Wasm data segment.
@@ -1682,6 +1782,23 @@ uint64_t WasmObjectWriter::writeOneObject(MCAssembler &Asm,
           default:
             llvm_unreachable("unexpected type");
           }
+
+          if (WS.getName().endswith("$alias")) {
+            std::string PtrName = (WS.getName().rsplit('$').first).str();
+            decltype(auto) PtrWS = dyn_cast<MCSymbolWasm>(Asm.getContext().lookupSymbol(PtrName));
+            LLVM_DEBUG(dbgs() << "======write global symbol=" << PtrWS->getName() << " section=" << PtrWS->getSection().getName()
+                              << " count=" << DataLocations.count(PtrWS) <<  "\n");
+            assert(DataLocations.count(PtrWS) > 0 && "symbol not found in data locations index space");
+            const wasm::WasmDataReference &SymRef = DataLocations[PtrWS];
+            const WasmDataSegment &Segment = DataSegments[SymRef.Segment];
+            LLVM_DEBUG(dbgs() << "======write global symbol=" << PtrWS->getName()
+                              << " section=" << Segment.Section->getName() << " segment=" << Segment.Name << " flags=" << Segment.InitFlags
+                              << " offset=" << Segment.Offset <<":" << SymRef.Offset << " size=" << SymRef.Size
+                              << " alignment=" << Segment.Alignment << " linkage=" << Segment.LinkingFlags
+                              << " data=" << Segment.Data.size() <<  "\n");
+            Global.InitExpr.Inst.Value.Int64 = Segment.Offset + SymRef.Offset;
+          }
+
           assert(WasmIndices.count(&WS) == 0);
           WasmIndices[&WS] = Global.Index;
           Globals.push_back(Global);

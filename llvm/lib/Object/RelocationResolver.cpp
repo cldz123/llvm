@@ -630,6 +630,22 @@ static bool supportsWasm32(uint64_t Type) {
   }
 }
 
+static bool supportsCGPU32(uint64_t Type) {
+  switch (Type) {
+  case wasm::R_CGPU_26:
+  case wasm::R_CGPU_CALL:
+  case wasm::R_CGPU_DATA:
+  case wasm::R_CGPU_CALL16:
+  case wasm::R_CGPU_HI16:
+  case wasm::R_CGPU_LO16:
+  case wasm::R_CGPU_HIGHER:
+  case wasm::R_CGPU_HIGHEST:
+    return true;
+  default:
+    return supportsWasm32(Type);
+  }
+}
+
 static bool supportsWasm64(uint64_t Type) {
   switch (Type) {
   case wasm::R_WASM_MEMORY_ADDR_LEB64:
@@ -641,6 +657,22 @@ static bool supportsWasm64(uint64_t Type) {
     return true;
   default:
     return supportsWasm32(Type);
+  }
+}
+
+static bool supportsCGPU64(uint64_t Type) {
+  switch (Type) {
+  case wasm::R_CGPU_26:
+  case wasm::R_CGPU_CALL:
+  case wasm::R_CGPU_DATA:
+  case wasm::R_CGPU_CALL16:
+  case wasm::R_CGPU_HI16:
+  case wasm::R_CGPU_LO16:
+  case wasm::R_CGPU_HIGHER:
+  case wasm::R_CGPU_HIGHEST:
+    return true;
+  default:
+    return supportsWasm64(Type);
   }
 }
 
@@ -668,6 +700,23 @@ static uint64_t resolveWasm32(uint64_t Type, uint64_t Offset, uint64_t S,
   }
 }
 
+static uint64_t resolveCGPU32(uint64_t Type, uint64_t Offset, uint64_t S,
+                              uint64_t LocData, int64_t Addend) {
+  switch (Type) {
+  case wasm::R_CGPU_26:
+  case wasm::R_CGPU_CALL:
+  case wasm::R_CGPU_DATA:
+  case wasm::R_CGPU_CALL16:
+  case wasm::R_CGPU_HI16:
+  case wasm::R_CGPU_LO16:
+  case wasm::R_CGPU_HIGHER:
+  case wasm::R_CGPU_HIGHEST:
+    return LocData;
+  default:
+    return resolveWasm32(Type, Offset, S, LocData, Addend);
+  }
+}
+
 static uint64_t resolveWasm64(uint64_t Type, uint64_t Offset, uint64_t S,
                               uint64_t LocData, int64_t Addend) {
   switch (Type) {
@@ -681,6 +730,23 @@ static uint64_t resolveWasm64(uint64_t Type, uint64_t Offset, uint64_t S,
     return LocData;
   default:
     return resolveWasm32(Type, Offset, S, LocData, Addend);
+  }
+}
+
+static uint64_t resolveCGPU64(uint64_t Type, uint64_t Offset, uint64_t S,
+                              uint64_t LocData, int64_t Addend) {
+  switch (Type) {
+  case wasm::R_CGPU_26:
+  case wasm::R_CGPU_CALL:
+  case wasm::R_CGPU_DATA:
+  case wasm::R_CGPU_CALL16:
+  case wasm::R_CGPU_HI16:
+  case wasm::R_CGPU_LO16:
+  case wasm::R_CGPU_HIGHER:
+  case wasm::R_CGPU_HIGHEST:
+    return LocData;
+  default:
+    return resolveWasm64(Type, Offset, S, LocData, Addend);
   }
 }
 
@@ -772,6 +838,11 @@ getRelocationResolver(const ObjectFile &Obj) {
       return {supportsWasm32, resolveWasm32};
     if (Obj.getArch() == Triple::wasm64)
       return {supportsWasm64, resolveWasm64};
+    if (Obj.getArch() == Triple::cgpu32)
+      return {supportsCGPU32, resolveCGPU32};
+    if (Obj.getArch() == Triple::cgpu64)
+      return {supportsCGPU64, resolveCGPU64};
+
     return {nullptr, nullptr};
   }
 
