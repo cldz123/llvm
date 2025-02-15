@@ -1,3 +1,7 @@
+if (OLLVM_BUILD_DEBUG)
+  add_compile_definitions(OLLVM_BUILD_DEBUG)
+endif()
+
 add_subdirectory(IR)
 add_subdirectory(Support)
 add_subdirectory(Frontend)

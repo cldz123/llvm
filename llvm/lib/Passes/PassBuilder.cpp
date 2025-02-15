@@ -252,6 +252,8 @@
 #include "llvm/Transforms/Vectorize/SLPVectorizer.h"
 #include "llvm/Transforms/Vectorize/VectorCombine.h"
 
+#include "llvm/Guard/Injection/PassRegister.h"
+
 using namespace llvm;
 
 static const Regex DefaultAliasRegex(
@@ -425,6 +427,7 @@ PassBuilder::PassBuilder(TargetMachine *TM, PipelineTuningOptions PTO,
 #define CGSCC_ANALYSIS(NAME, CREATE_PASS)                                      \
   PIC->addClassToPassName(decltype(CREATE_PASS)::name(), NAME);
 #include "PassRegistry.def"
+  PASS_BUILDER_INJECTION(ollvm::PassBuilderCreate, PIC);
   }
 }
 
@@ -432,6 +435,7 @@ void PassBuilder::registerModuleAnalyses(ModuleAnalysisManager &MAM) {
 #define MODULE_ANALYSIS(NAME, CREATE_PASS)                                     \
   MAM.registerPass([&] { return CREATE_PASS; });
 #include "PassRegistry.def"
+  PASS_BUILDER_INJECTION(ollvm::PassBuilderRegisterModuleAnalyses, MAM);
 
   for (auto &C : ModuleAnalysisRegistrationCallbacks)
     C(MAM);
@@ -455,6 +459,7 @@ void PassBuilder::registerFunctionAnalyses(FunctionAnalysisManager &FAM) {
 #define FUNCTION_ANALYSIS(NAME, CREATE_PASS)                                   \
   FAM.registerPass([&] { return CREATE_PASS; });
 #include "PassRegistry.def"
+  PASS_BUILDER_INJECTION(ollvm::PassBuilderRegisterFunctionAnalyses, FAM);
 
   for (auto &C : FunctionAnalysisRegistrationCallbacks)
     C(FAM);
@@ -916,6 +921,9 @@ static bool isModulePassName(StringRef Name, CallbacksT &Callbacks) {
   if (Name == "require<" NAME ">" || Name == "invalidate<" NAME ">")           \
     return true;
 #include "PassRegistry.def"
+  if (PASS_BUILDER_INJECTION_BOOL(ollvm::PassBuilderIsModulePassName, Name)) {
+    return true;
+  }
 
   return callbacksAcceptPassName<ModulePassManager>(Name, Callbacks);
 }
@@ -970,6 +978,9 @@ static bool isFunctionPassName(StringRef Name, CallbacksT &Callbacks) {
   if (Name == "require<" NAME ">" || Name == "invalidate<" NAME ">")           \
     return true;
 #include "PassRegistry.def"
+  if (PASS_BUILDER_INJECTION_BOOL(ollvm::PassBuilderIsFunctionPassName, Name)) {
+    return true;
+  }
 
   return callbacksAcceptPassName<FunctionPassManager>(Name, Callbacks);
 }
@@ -1259,6 +1270,9 @@ Error PassBuilder::parseModulePass(ModulePassManager &MPM,
     return Error::success();                                                   \
   }
 #include "PassRegistry.def"
+  if (PASS_BUILDER_INJECTION_BOOL(ollvm::PassBuilderParseModulePass, Name, MPM)) {
+    return Error::success();
+  }
 
   for (auto &C : ModulePipelineParsingCallbacks)
     if (C(Name, MPM, InnerPipeline))
@@ -1381,6 +1395,9 @@ Error PassBuilder::parseCGSCCPass(CGSCCPassManager &CGPM,
     return Error::success();                                                   \
   }
 #include "PassRegistry.def"
+  if (PASS_BUILDER_INJECTION_BOOL(ollvm::PassBuilderParseCGSCCPass, Name, CGPM)) {
+    return Error::success();
+  }
 
   for (auto &C : CGSCCPipelineParsingCallbacks)
     if (C(Name, CGPM, InnerPipeline))
@@ -1489,6 +1506,9 @@ Error PassBuilder::parseFunctionPass(FunctionPassManager &FPM,
     return Error::success();                                                   \
   }
 #include "PassRegistry.def"
+  if (PASS_BUILDER_INJECTION_BOOL(ollvm::PassBuilderParseFunctionPass, Name, FPM)) {
+    return Error::success();
+  }
 
   for (auto &C : FunctionPipelineParsingCallbacks)
     if (C(Name, FPM, InnerPipeline))
@@ -1850,6 +1870,7 @@ void PassBuilder::printPassNames(raw_ostream &OS) {
   OS << "Loop analyses:\n";
 #define LOOP_ANALYSIS(NAME, CREATE_PASS) printPassName(NAME, OS);
 #include "PassRegistry.def"
+  PASS_BUILDER_INJECTION(ollvm::PassBuilderPrintPassNames, OS);
 }
 
 void PassBuilder::registerParseTopLevelPipelineCallback(
