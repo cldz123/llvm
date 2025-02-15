@@ -65,6 +65,10 @@ gen_arch_intrinsics("IntrinsicsMips") {
   intrinsic_prefix = "mips"
 }
 
+tablegen("IntrinsicsCGPU") {
+  intrinsic_prefix = "cgpu0"
+}
+
 gen_arch_intrinsics("IntrinsicsNVPTX") {
   intrinsic_prefix = "nvvm"
 }

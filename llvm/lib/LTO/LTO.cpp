@@ -57,6 +57,8 @@
 #include "llvm/Transforms/Utils/SplitModule.h"
 
 #include <optional>
+#include "llvm/Guard/Guard/Virtualization/VmpLTO.h"
+
 #include <set>
 
 using namespace llvm;
@@ -763,6 +765,8 @@ Error LTO::addModule(InputFile &Input, unsigned ModI,
   addModuleToGlobalRes(ModSyms, {ResI, ResE},
                        IsThinLTO ? ThinLTO.ModuleMap.size() + 1 : 0,
                        LTOInfo->HasSummary);
+  static auto VmpAnalysis = std::make_unique<VmpInitializersAnalysis>();
+  VmpAnalysis->analyze(Input);
 
   if (IsThinLTO)
     return addThinLTO(BM, ModSyms, ResI, ResE);

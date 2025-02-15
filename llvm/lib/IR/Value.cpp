@@ -442,7 +442,7 @@ void Value::takeName(Value *V) {
     ST->reinsertValue(this);
 }
 
-#ifndef NDEBUG
+#if !defined(NDEBUG) || defined(OLLVM_BUILD_DEBUG)
 std::string Value::getNameOrAsOperand() const {
   if (!getName().empty())
     return std::string(getName());

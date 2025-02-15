@@ -430,6 +430,7 @@ HANDLE_LIBCALL(MEMCPY, "memcpy")
 HANDLE_LIBCALL(MEMMOVE, "memmove")
 HANDLE_LIBCALL(MEMSET, "memset")
 HANDLE_LIBCALL(BZERO, nullptr)
+HANDLE_LIBCALL(ABORT, "abort")
 
 // Element-wise unordered-atomic memory of different sizes
 HANDLE_LIBCALL(MEMCPY_ELEMENT_UNORDERED_ATOMIC_1, "__llvm_memcpy_element_unordered_atomic_1")
