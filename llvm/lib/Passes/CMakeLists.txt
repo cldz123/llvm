@@ -33,3 +33,13 @@ add_llvm_component_library(LLVMPasses
   Vectorize
   Instrumentation
   )
+
+if (OLLVM_BUILD_INJECTION)
+  add_compile_definitions(OLLVM_BUILD_INJECTION)
+  message("-- LLVMPass not dependencies guard, build injection mode")
+else()
+  # 非注入模式下需要依赖
+  add_dependencies(LLVMPasses Guard)
+  target_link_libraries(LLVMPasses PRIVATE Guard)
+  message("-- LLVMPass dependencies guard, build normal mode")
+endif()

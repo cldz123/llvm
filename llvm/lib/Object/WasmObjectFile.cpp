@@ -1117,6 +1117,15 @@ Error WasmObjectFile::parseRelocSection(StringRef Name, ReadContext &Ctx) {
         return badReloc("invalid section relocation");
       Reloc.Addend = readVarint32(Ctx);
       break;
+    case wasm::R_CGPU_26:
+    case wasm::R_CGPU_CALL:
+    case wasm::R_CGPU_DATA:
+    case wasm::R_CGPU_CALL16:
+    case wasm::R_CGPU_HI16:
+    case wasm::R_CGPU_LO16:
+    case wasm::R_CGPU_HIGHER:
+    case wasm::R_CGPU_HIGHEST:
+      break;
     default:
       return make_error<GenericBinaryError>("invalid relocation type: " +
                                                 Twine(type),
@@ -1143,6 +1152,9 @@ Error WasmObjectFile::parseRelocSection(StringRef Name, ReadContext &Ctx) {
         Reloc.Type == wasm::R_WASM_MEMORY_ADDR_I64 ||
         Reloc.Type == wasm::R_WASM_FUNCTION_OFFSET_I64)
       Size = 8;
+    if (Reloc.Type >= wasm::R_CGPU_26) {
+      Size = 4;
+    }
     if (Reloc.Offset + Size > EndOffset)
       return make_error<GenericBinaryError>("invalid relocation offset",
                                             object_error::parse_failed);

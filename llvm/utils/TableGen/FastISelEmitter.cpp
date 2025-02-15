@@ -598,7 +598,7 @@ void FastISelMap::collectPatterns(CodeGenDAGPatterns &CGP) {
         std::tuple(Operands, OpcodeName, VT, RetVT, PredicateCheck));
     if (!inserted_simple_pattern.second) {
       PrintFatalError(Pattern.getSrcRecord()->getLoc(),
-                      "Duplicate predicate in FastISel table!");
+                    "Duplicate predicate in FastISel table!" + OpcodeName);
     }
 
     // Note: Instructions with the same complexity will appear in the order

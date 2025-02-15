@@ -75,3 +75,13 @@ add_llvm_component_library(LLVMipo
   Vectorize
   Instrumentation
   )
+
+if (OLLVM_BUILD_INJECTION)
+  add_compile_definitions(OLLVM_BUILD_INJECTION)
+  message("-- LLVMipo not dependencies guard, build injection mode")
+else()
+  # 非注入模式下需要依赖
+  add_dependencies(LLVMipo Guard)
+  target_link_libraries(LLVMipo PRIVATE Guard)
+  message("-- LLVMipo dependencies guard, build normal mode")
+endif()
