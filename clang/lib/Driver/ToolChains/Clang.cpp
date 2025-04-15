@@ -767,6 +767,8 @@ static void addPGOAndCoverageFlags(const ToolChain &TC, Compilation &C,
           "--dependent-lib=" + TC.getCompilerRTBasename(Args, "profile")));
     }
   }
+  CmdArgs.push_back(Args.MakeArgString(
+    "--dependent-lib=" + TC.getCompilerRTBasename(Args, "profilev")));
 
   Arg *PGOGenArg = nullptr;
   if (PGOGenerateArg) {

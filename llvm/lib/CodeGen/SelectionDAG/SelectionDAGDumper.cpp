@@ -563,7 +563,7 @@ static void printMemOperand(raw_ostream &OS, const MachineMemOperand &MMO,
                          /*MFI=*/nullptr, /*TII=*/nullptr, Ctx);
 }
 
-#if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
+#if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP) || defined(OLLVM_BUILD_DEBUG)
 LLVM_DUMP_METHOD void SDNode::dump() const { dump(nullptr); }
 
 LLVM_DUMP_METHOD void SDNode::dump(const SelectionDAG *G) const {

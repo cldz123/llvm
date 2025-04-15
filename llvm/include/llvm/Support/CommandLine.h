@@ -861,6 +861,9 @@ public:
   ///
   template <class DT>
   void addLiteralOption(StringRef Name, const DT &V, StringRef HelpStr) {
+    if (findOption(Name) != Values.size()) {
+      return;
+    }
     assert(findOption(Name) == Values.size() && "Option already exists!");
     OptionInfo X(Name, static_cast<DataType>(V), HelpStr);
     Values.push_back(X);

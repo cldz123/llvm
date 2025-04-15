@@ -1596,6 +1596,8 @@ static void addSectalignToPage(const ArgList &Args, ArgStringList &CmdArgs,
 
 void Darwin::addProfileRTLibs(const ArgList &Args,
                               ArgStringList &CmdArgs) const {
+  AddLinkRuntimeLib(Args, CmdArgs, "profilev",
+                                  RuntimeLinkOptions(RLO_AlwaysLink));
   if (!needsProfileRT(Args) && !needsGCovInstrumentation(Args))
     return;
 
