@@ -35,7 +35,10 @@ foreach(t ${LLVM_TARGETS_TO_BUILD})
   message(STATUS "Targeting ${t}")
   add_subdirectory(${t})
 endforeach()
-add_subdirectory(CGPU)
+
+if (OLLVM_BUILD_INJECTION)
+  add_subdirectory(CGPU)
+endif()
 
 # Currently we do not allow libraries from lib to reference targets directly.
 # This property is used to enforce that convention. It is important because the

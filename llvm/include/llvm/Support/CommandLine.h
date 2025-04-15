@@ -869,6 +869,9 @@ public:
   ///
   template <class DT>
   void addLiteralOption(StringRef Name, const DT &V, StringRef HelpStr) {
+    if (findOption(Name) != Values.size()) {
+      return;
+    }
 #ifndef NDEBUG
     if (findOption(Name) != Values.size())
       report_fatal_error("Option '" + Name + "' already exists!");

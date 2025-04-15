@@ -806,6 +806,21 @@ static llvm::Value *emitARCRetainLoadOfScalar(CodeGenFunction &CGF,
 /// its pointer, name, and types registered in the class structure.
 void CodeGenFunction::GenerateObjCMethod(const ObjCMethodDecl *OMD) {
   StartObjCMethod(OMD, OMD->getClassInterface());
+
+  // 添加对 object-c 函数 annotation 的支持
+  // Emit annotate attribute as IR metadata if present.
+  if (OMD->hasAttr<AnnotateAttr>()) {
+    llvm::LLVMContext &Context = CGM.getLLVMContext();
+    SmallVector<llvm::Metadata *, 4> MDs;
+    for (const auto *A : OMD->specific_attrs<AnnotateAttr>()) {
+      MDs.push_back(llvm::MDString::get(Context, A->getAnnotation()));
+    }
+    if (!MDs.empty()) {
+      llvm::MDNode *MD = llvm::MDNode::get(Context, MDs);
+      CurFn->setMetadata("annotation", MD);
+    }
+  }
+
   PGO.assignRegionCounters(GlobalDecl(OMD), CurFn);
   assert(isa<CompoundStmt>(OMD->getBody()));
   incrementProfileCounter(OMD->getBody());
